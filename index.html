@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Seeing Like a State — Who Counts as Poor in Indonesia?</title>
+<style>
+  :root{
+    --bg:#0c0f14; --panel:#141a22; --panel2:#1b2330; --ink:#e9eef4; --muted:#94a3b4;
+    --line:#28313d; --amber:#e8b04b; --red:#e5544b; --teal:#3bc6ad; --blue:#7aa2f7;
+    --paper:#f3ead3; --stamp:#b5483f;
+    --r-urban:#7aa2f7; --r-rural:#e8b04b; --r-outer:#e5544b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace}
+  .wrap{max-width:1000px;margin:0 auto;padding:44px 24px 110px}
+
+  /* ---- case-file header ---- */
+  header{border:1px solid var(--line);border-radius:14px;background:
+    linear-gradient(180deg,#161d27,#10151c);padding:30px 30px 26px;position:relative;overflow:hidden}
+  header:before{content:"CASE FILE";position:absolute;top:18px;right:-38px;transform:rotate(45deg);
+    background:var(--stamp);color:#fff;font-size:12px;font-weight:800;letter-spacing:3px;padding:6px 52px}
+  .docket{font-family:"SF Mono",ui-monospace,Menlo,monospace;color:var(--muted);font-size:12px;letter-spacing:1px;text-transform:uppercase}
+  header h1{font-size:33px;line-height:1.12;margin:14px 0 4px;letter-spacing:-.5px}
+  header h1 .nb{color:var(--amber)}
+  header .sub{color:var(--muted);font-size:15px;font-weight:600}
+  header .lede{color:#c6d2de;font-size:16.5px;max-width:74ch;margin-top:18px}
+  header .lede strong{color:var(--ink)}
+  .brief{margin-top:20px;border-left:3px solid var(--amber);background:rgba(232,176,75,.06);
+    padding:14px 18px;border-radius:0 10px 10px 0;font-size:14.5px;color:#d7e0ea}
+  .brief b{color:var(--amber)}
+
+  section{margin-top:42px}
+  .htag{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid var(--line);padding-bottom:9px;margin-bottom:18px}
+  .htag .ex{font-family:"SF Mono",monospace;font-size:12px;color:var(--bg);background:var(--amber);
+    padding:2px 9px;border-radius:5px;font-weight:800;letter-spacing:.5px}
+  .htag h2{font-size:14px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px}
+  p.exp{color:var(--muted);font-size:14.5px;max-width:78ch}
+  p.exp em{color:#c6d2de;font-style:normal}
+
+  /* ---- proxy chooser ---- */
+  .proxies{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:6px 0 4px}
+  @media(max-width:760px){.proxies{grid-template-columns:1fr 1fr}}
+  label.px{display:flex;gap:10px;align-items:flex-start;background:var(--panel2);border:1px solid var(--line);
+    border-radius:11px;padding:12px 13px;cursor:pointer;transition:.15s;font-size:14px}
+  label.px:hover{border-color:var(--blue)}
+  label.px input{margin-top:3px;accent-color:var(--amber);transform:scale(1.15)}
+  label.px .nm{font-weight:600}
+  label.px .ds{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+  label.px.off{opacity:.5}
+  .hidden-vars{margin-top:14px;font-size:13px;color:var(--muted);border-top:1px dashed var(--line);padding-top:12px}
+  .hidden-vars b{color:var(--red)}
+  .budgetbar{display:flex;align-items:center;gap:14px;margin-top:18px;flex-wrap:wrap}
+  .budgetbar input[type=range]{accent-color:var(--amber);flex:1;min-width:200px}
+  .budgetbar .lab{font-size:14px;color:var(--muted)}
+  .budgetbar .lab b{color:var(--ink)}
+
+  .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px;align-items:center}
+  button.go{background:var(--amber);color:#10151c;border:0;border-radius:10px;padding:13px 20px;font-weight:800;font-size:15px;cursor:pointer;letter-spacing:.3px}
+  button.go[disabled]{opacity:.4;cursor:not-allowed}
+  button.ghost{background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:10px;padding:12px 16px;font-size:14px;cursor:pointer}
+
+  /* ---- training viz ---- */
+  .train{margin-top:22px;display:none}
+  .train.show{display:block}
+  .trainhead{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;color:var(--muted)}
+  .trainhead .it{font-family:"SF Mono",monospace;color:var(--teal)}
+  .lossbox{height:74px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);margin-top:8px;position:relative;overflow:hidden}
+  #lossCanvas{position:absolute;inset:0;width:100%;height:100%}
+  .weights{margin-top:16px;display:flex;flex-direction:column;gap:7px}
+  .wrow{display:grid;grid-template-columns:120px 1fr 56px;gap:10px;align-items:center;font-size:13px}
+  .wtrack{height:14px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;position:relative}
+  .wfill{position:absolute;top:0;bottom:0;background:var(--blue);border-radius:6px;transition:.25s}
+  .wnum{font-family:"SF Mono",monospace;color:var(--muted);text-align:right}
+
+  /* ---- reveal ---- */
+  .reveal{margin-top:18px;display:none}
+  .reveal.show{display:block;animation:fade .5s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .headline{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-end;margin-bottom:6px}
+  .headline .big{font-size:62px;font-weight:800;line-height:.95;color:var(--red);letter-spacing:-2px}
+  .headline .cap{font-size:14px;color:var(--muted);max-width:34ch}
+  .cmatrix{display:grid;grid-template-columns:130px 1fr 1fr;gap:6px;margin:20px 0 6px;font-size:13px}
+  .cmatrix .h{color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center;font-size:12px}
+  .cmatrix .lab{color:var(--muted);display:flex;align-items:center;font-size:12px}
+  .cell{border-radius:9px;padding:14px;text-align:center;border:1px solid var(--line)}
+  .cell .v{font-size:26px;font-weight:800}
+  .cell .t{font-size:11px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+  .cell.tp{background:rgba(59,198,173,.10);border-color:rgba(59,198,173,.35)}
+  .cell.tn{background:rgba(148,163,180,.06)}
+  .cell.fp{background:rgba(232,176,75,.10);border-color:rgba(232,176,75,.35)}
+  .cell.fn{background:rgba(229,84,75,.14);border-color:rgba(229,84,75,.5);box-shadow:0 0 0 1px rgba(229,84,75,.25)}
+  .cell.fn .v{color:var(--red)}
+
+  .regions{margin-top:24px;display:flex;flex-direction:column;gap:14px}
+  .rrow{display:grid;grid-template-columns:130px 1fr 92px;gap:14px;align-items:center;font-size:14px}
+  .rrow .rn{font-weight:600}
+  .rtrack{height:26px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;overflow:hidden;position:relative}
+  .rfill{height:100%;transition:width .7s ease;border-radius:6px 0 0 6px}
+  .rrow .rp{font-family:"SF Mono",monospace;text-align:right;color:var(--red);font-weight:700}
+  .reglegend{font-size:12.5px;color:var(--muted);margin-top:4px}
+
+  .files{margin-top:26px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:760px){.files{grid-template-columns:1fr}.cmatrix{grid-template-columns:90px 1fr 1fr}.headline .big{font-size:48px}}
+  .vfile{background:var(--paper);color:#2a2417;border-radius:10px;padding:15px 16px;position:relative;font-size:13px;line-height:1.5}
+  .vfile .vh{font-family:"SF Mono",monospace;font-size:11px;color:#7a6f52;letter-spacing:.5px;text-transform:uppercase}
+  .vfile .vid{font-weight:800;font-size:15px;margin:3px 0 7px;color:#241f12}
+  .vfile .vd{color:#4a4230}
+  .vfile .vstamp{display:inline-block;margin-top:9px;background:var(--stamp);color:#fff;font-size:10.5px;font-weight:800;
+    letter-spacing:1px;padding:3px 9px;border-radius:4px;transform:rotate(-3deg)}
+  .note{color:var(--muted);font-size:13.5px;margin-top:20px;border-left:2px solid var(--line);padding-left:14px;max-width:80ch}
+
+  /* ---- fairness audit ---- */
+  .strat{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  button.st{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:10px;
+    padding:11px 14px;font-size:14px;cursor:pointer;text-align:left;transition:.15s}
+  button.st:hover{border-color:var(--blue)}
+  button.st.active{border-color:var(--amber);background:#23211a}
+  button.st .stt{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  table.audit{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
+  table.audit th,table.audit td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:right}
+  table.audit th:first-child,table.audit td:first-child{text-align:left;color:var(--muted)}
+  table.audit th{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700}
+  table.audit td .mono{font-weight:700}
+  .best{color:var(--teal)} .worst{color:var(--red)}
+  .imposs{margin-top:18px;background:rgba(229,84,75,.08);border:1px solid rgba(229,84,75,.3);
+    border-radius:11px;padding:16px 18px;font-size:14.5px;color:#e7d2cf}
+  .imposs b{color:var(--red)}
+
+  /* ---- lenses ---- */
+  .lenses{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  @media(max-width:760px){.lenses{grid-template-columns:1fr}}
+  button.lens{text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;transition:.15s}
+  button.lens:hover{border-color:var(--blue)}
+  button.lens.active{border-color:var(--amber);background:#23211a}
+  button.lens .vt{font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;font-weight:700}
+  button.lens .vn{font-size:16px;font-weight:700;margin-top:3px}
+  .verdict{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;min-height:40px}
+  .verdict .stamp{display:inline-block;font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border-radius:6px;margin-bottom:10px}
+  .stamp.fair{background:rgba(59,198,173,.15);color:var(--teal);border:1px solid rgba(59,198,173,.4)}
+  .stamp.unjust{background:rgba(229,84,75,.15);color:var(--red);border:1px solid rgba(229,84,75,.4)}
+  .stamp.accurate{background:rgba(122,162,247,.15);color:var(--blue);border:1px solid rgba(122,162,247,.4)}
+  .cite{display:block;margin-top:12px;font-size:12px;color:var(--muted);font-style:italic;border-top:1px solid var(--line);padding-top:8px}
+
+  /* ---- pratt ---- */
+  .pratt{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+  @media(max-width:900px){.pratt{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:520px){.pratt{grid-template-columns:1fr}}
+  .pcard{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:15px}
+  .pcard .pd{font-size:14px;font-weight:800;letter-spacing:.3px}
+  .pcard .pscore{font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin:8px 0;
+    display:inline-block;padding:3px 8px;border-radius:5px;background:rgba(229,84,75,.15);color:var(--red);border:1px solid rgba(229,84,75,.35)}
+  .pcard .pscore.mid{background:rgba(232,176,75,.15);color:var(--amber);border-color:rgba(232,176,75,.35)}
+  .pcard .pt{font-size:12.5px;color:var(--muted);line-height:1.5}
+
+  .thesis{background:linear-gradient(180deg,#1a212b,#141a22);border:1px solid var(--line);border-radius:14px;padding:28px}
+  .thesis p{font-size:17px;margin:0 0 15px}
+  .thesis p:last-child{margin-bottom:0}
+  .thesis .q{color:var(--amber);font-weight:600}
+  .thesis strong{color:#fff}
+
+  footer{margin-top:50px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:20px}
+  footer h3{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+  footer ol{margin:0;padding-left:20px}
+  footer li{margin-bottom:7px;line-height:1.5}
+  footer code{background:var(--panel2);padding:1px 6px;border-radius:4px;color:var(--ink)}
+  footer .meta{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line)}
+  a{color:var(--blue)}
+
+  /* research question / method */
+  .rq{margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:760px){.rq{grid-template-columns:1fr}}
+  .rqitem{background:rgba(232,176,75,.06);border:1px solid var(--line);border-left:3px solid var(--amber);
+    border-radius:0 10px 10px 0;padding:13px 16px;font-size:14px;color:#d7e0ea}
+  .rqitem .k{display:block;font-family:"SF Mono",monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--amber);margin-bottom:5px}
+  /* prediction */
+  .predict{margin-top:18px;border-top:1px dashed var(--line);padding-top:16px;display:none}
+  .predict.show{display:block}
+  .ptitle{font-weight:700;font-size:15px;margin-bottom:12px}
+  .ptitle .psub{font-weight:400;color:var(--muted);font-size:13px}
+  .prow{margin-bottom:14px}
+  .prow>label{display:block;font-size:13.5px;color:var(--muted);margin-bottom:7px}
+  .pinput{display:flex;align-items:center;gap:12px}
+  .pinput input[type=range]{accent-color:var(--amber);flex:1;max-width:320px}
+  .pregion{display:flex;gap:8px;flex-wrap:wrap}
+  .pregion button{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:9px 13px;font-size:13.5px;cursor:pointer}
+  .pregion button.sel{border-color:var(--amber);background:#23211a}
+  .predresult{margin:16px 0 4px;background:var(--panel2);border:1px solid var(--amber);border-radius:11px;padding:15px 17px;font-size:14.5px;display:none;line-height:1.7}
+  .predresult.show{display:block;animation:fade .4s ease}
+  .predresult b{color:var(--amber)}
+  .predresult .hit{color:var(--teal);font-weight:700} .predresult .miss{color:var(--red);font-weight:700}
+  /* scatter evidence map */
+  .scatterwrap{position:relative;margin-top:4px}
+  #scatter{width:100%;height:340px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);display:block;cursor:ew-resize;touch-action:none}
+  .scatterbar{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin:6px 0 12px;font-size:13px;color:var(--muted)}
+  .scatterbar .read{font-family:"SF Mono",monospace;color:var(--ink)}
+  .axhint{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-top:7px}
+  button.toggle{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer}
+  button.toggle.on{border-color:var(--amber);background:#23211a}
+  /* pratt expandable */
+  .pcard{cursor:pointer;transition:border-color .15s}
+  .pcard:hover{border-color:var(--blue)}
+  .pcard .pt{display:none;margin-top:8px}
+  .pcard.open .pt{display:block}
+  .pcard .more{font-size:11px;color:var(--amber);margin-top:7px;font-family:"SF Mono",monospace}
+  .pcard.open .more{display:none}
+  /* findings */
+  .findings{display:flex;flex-direction:column;gap:12px}
+  .finding{background:linear-gradient(180deg,#1a212b,#141a22);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+  .finding .fn{font-family:"SF Mono",monospace;font-size:12px;color:var(--amber);letter-spacing:1px}
+  .finding .ft{font-size:17px;font-weight:700;margin:6px 0 5px}
+  .finding .fb{font-size:14.5px;color:#c6d2de}
+  .closingq{margin-top:18px;font-size:18px;color:var(--amber);font-weight:600;line-height:1.45}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="docket">COLLEGE 117 · Unessay · Field Investigation No. 117-PMT · Original research, not a report</div>
+    <h1>Seeing Like a State:<br><span class="nb">Who counts as poor</span> when a formula decides?</h1>
+    <div class="sub">An interactive investigation into the algorithm that sorts 270 million Indonesians into the helped and the unseen.</div>
+    <p class="lede">Indonesia can't afford to help every poor family, so it built a machine to find them. The machine never
+    asks <em>"are you poor?"</em> — it can't see poverty. It asks what it <strong>can</strong> see: your roof, your floor,
+    your electricity. From those clues it guesses, and the lowest-scoring households get cash aid. <strong>You are about to run
+    that machine</strong> — choose what it sees, predict what it will do, then go find the people it missed.</p>
+    <div class="rq">
+      <div class="rqitem"><span class="k">Research question</span>Can an algorithm that uses no income data and no group
+      label still produce a systematically unjust distribution of aid — and which theory of justice is even able to <em>detect</em> it?</div>
+      <div class="rqitem"><span class="k">Method</span>Build a working proxy-means-test classifier, run it on a population
+      whose true poverty is hidden, and locate where it fails. You don't read the result here — you generate it.</div>
+    </div>
+  </header>
+
+  <!-- EXHIBIT A -->
+  <section>
+    <div class="htag"><span class="ex">EXHIBIT A</span><h2>Choose what the state is allowed to see</h2></div>
+    <div class="panel">
+      <p class="exp">Each household below is real in structure if not in name — <em>1,000 synthetic Indonesian families</em>
+      whose true hardship is hidden from you, exactly as it is hidden from the state. The algorithm can only learn from
+      <em>proxies</em>: cheap, countable signs of wealth. Tick the clues the formula may use. Fewer clues, or the wrong ones,
+      and more of the poor slip through.</p>
+
+      <div class="proxies" id="proxies"></div>
+
+      <div class="hidden-vars">The model never receives: <b>actual income</b>, <b>actual poverty</b>, <b>hunger</b>,
+      <b>medical debt</b>, <b>region</b>. It infers everything from the boxes you ticked. This is the whole wager of the
+      Proxy Means Test — that what is <em>legible</em> stands in for what is <em>true</em>.</div>
+
+      <div class="budgetbar">
+        <span class="lab">Aid budget covers <b id="budgetLab">30%</b> of households (<b id="slotLab">300</b> of 1,000 slots).
+        About <b>38%</b> are actually poor — so scarcity alone guarantees someone is turned away.</span>
+        <input id="budget" type="range" min="15" max="45" value="30" />
+      </div>
+
+      <div class="actions">
+        <button id="trainBtn" class="go">▶ Train the algorithm on these clues</button>
+        <button id="resetBtn" class="ghost">Reset investigation</button>
+      </div>
+
+      <div id="train" class="train">
+        <div class="trainhead"><span>Logistic regression learning the proxy → poverty boundary…</span>
+          <span class="it" id="trainIt">iter 0 · loss —</span></div>
+        <div class="lossbox"><canvas id="lossCanvas"></canvas></div>
+        <div class="weights" id="weights"></div>
+        <div id="predict" class="predict">
+          <div class="ptitle">Before you look — record your hypothesis <span class="psub">this is the experiment: a guess you are about to test against the machine</span></div>
+          <div class="prow">
+            <label>Of the families who are genuinely poor, what share will the algorithm wrongly exclude?</label>
+            <div class="pinput"><input id="predExcl" type="range" min="0" max="60" value="15"><span id="predExclLab" class="mono">15%</span></div>
+          </div>
+          <div class="prow">
+            <label>Where will it fail most?</label>
+            <div id="predRegion" class="pregion">
+              <button data-r="0">Jakarta urban</button><button data-r="1">Java rural</button><button data-r="2">Outer islands</button>
+            </div>
+          </div>
+          <button id="revealBtn" class="go" disabled>Run the allocation → test my hypothesis &nbsp;→</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="reveal" class="reveal">
+
+    <!-- EXHIBIT B -->
+    <section>
+      <div class="htag"><span class="ex">EXHIBIT B</span><h2>The verdict of the grid</h2></div>
+      <div class="panel">
+        <div class="headline">
+          <div class="big" id="exclBig">—</div>
+          <div class="cap">of genuinely poor families were judged <strong>not poor enough to see</strong> and denied aid —
+          even though the budget was spent in full.</div>
+        </div>
+
+        <div id="predResult" class="predresult"></div>
+
+        <div class="cmatrix">
+          <div></div><div class="h">Family IS poor</div><div class="h">Family is NOT poor</div>
+          <div class="lab">Algorithm gave aid</div>
+          <div class="cell tp"><div class="v" id="cTP">—</div><div class="t">Correctly helped</div></div>
+          <div class="cell fp"><div class="v" id="cFP">—</div><div class="t">Aid leaked to non-poor</div></div>
+          <div class="lab">Algorithm denied aid</div>
+          <div class="cell fn"><div class="v" id="cFN">—</div><div class="t">The invisible poor</div></div>
+          <div class="cell tn"><div class="v" id="cTN">—</div><div class="t">Correctly excluded</div></div>
+        </div>
+
+        <p class="exp" style="margin-top:18px"><em>The same machine. The same budget. But invisibility is not distributed
+        evenly.</em> Below: of the truly poor in each region, the share the algorithm failed to see.</p>
+        <div class="regions" id="regions"></div>
+        <div class="reglegend">The proxies were calibrated on what wealth looks like near the capital. The further a poor
+        family lives from that template, the more its poverty becomes unreadable.</div>
+
+        <p class="exp" style="margin-top:26px"><strong>Open three of the case files the algorithm closed:</strong></p>
+        <div class="files" id="files"></div>
+
+        <p class="note" id="mechNote"></p>
+      </div>
+    </section>
+
+    <!-- EXHIBIT C -->
+    <section>
+      <div class="htag"><span class="ex">EXHIBIT C</span><h2>The evidence map — drag the line, watch who is abandoned</h2></div>
+      <div class="panel">
+        <p class="exp">Every household, placed left → right by <em>how poor the algorithm believes they are</em>. Red dots are the
+        families who are <em>actually</em> poor. The dashed line is the budget cutoff: everyone to its right receives aid,
+        everyone to its left is denied. <strong>Drag the line.</strong> Then flip the coloring to region.</p>
+        <div class="scatterbar">
+          <button id="regionToggle" class="toggle">Coloring: by true poverty</button>
+          <span id="scRead" class="read"></span>
+        </div>
+        <div class="scatterwrap"><canvas id="scatter"></canvas></div>
+        <div class="axhint"><span>← algorithm reads: NOT poor &nbsp;(denied)</span><span>(aided)&nbsp; algorithm reads: poor →</span></div>
+        <p class="exp" style="margin-top:14px">Every red dot stranded on the left is a genuinely poor family the model reads as
+        comfortable. Switch to region coloring: they are not scattered at random — they pile up in the outer islands, whose
+        poverty doesn't look the way the capital's proxies expect poverty to look. <em>You are looking at the failure directly,
+        not being told about it.</em></p>
+      </div>
+    </section>
+
+    <!-- EXHIBIT D -->
+    <section>
+      <div class="htag"><span class="ex">EXHIBIT D</span><h2>The fairness audit — try to fix it</h2></div>
+      <div class="panel">
+        <p class="exp">You saw the injustice. Now correct it. Each button below is a real, defensible definition of a
+        <em>fair</em> allocation — and each one is what a different theory of justice would demand. Switch between them and
+        watch the table. One row clearly does best — pay close attention to <em>what it has to do</em> to get there.</p>
+
+        <div class="strat" id="strat"></div>
+        <table class="audit" id="auditTbl"></table>
+        <div class="imposs" id="imposs"></div>
+      </div>
+    </section>
+
+    <!-- EXHIBIT E -->
+    <section>
+      <div class="htag"><span class="ex">EXHIBIT E</span><h2>Four theories of justice read the same result</h2></div>
+      <div class="lenses">
+        <button class="lens" data-lens="colorblind">
+          <div class="vt" style="color:var(--teal)">Anti-classification</div>
+          <div class="vn">"It used no protected data"</div>
+        </button>
+        <button class="lens" data-lens="rawls">
+          <div class="vt" style="color:var(--red)">Fair equality of opportunity</div>
+          <div class="vn">Rawls → Daniels</div>
+        </button>
+        <button class="lens" data-lens="faden">
+          <div class="vt" style="color:var(--red)">Sufficiency &amp; well-being</div>
+          <div class="vn">Faden &amp; Powers</div>
+        </button>
+        <button class="lens" data-lens="efficiency">
+          <div class="vt" style="color:var(--blue)">Efficiency</div>
+          <div class="vn">"Does the model work?"</div>
+        </button>
+      </div>
+      <div id="verdict" class="verdict">
+        <span style="color:var(--muted)">Pick a lens. Each renders a verdict on the <em>same</em> outcome you just produced —
+        and they cannot all be satisfied at once, which is the whole point.</span>
+      </div>
+    </section>
+
+    <!-- EXHIBIT F -->
+    <section>
+      <div class="htag"><span class="ex">EXHIBIT F</span><h2>Five dimensions of social justice score the machine</h2></div>
+      <div class="panel">
+        <p class="exp" style="margin-bottom:16px">Justice is not one axis but five (Pratt). Tap each to open the finding —
+        read across them and the "neutral" formula stops looking neutral.</p>
+        <div class="pratt" id="pratt"></div>
+      </div>
+    </section>
+
+    <!-- FINDINGS -->
+    <section>
+      <div class="htag"><span class="ex">FINDINGS</span><h2>What the investigation turned up</h2></div>
+      <p class="exp" style="margin-bottom:16px">Three results — each one produced by the machine above, not asserted. James C.
+      Scott called what you just watched <em>legibility</em>: to govern at scale, a state first flattens people into a few
+      countable signs, and whatever falls outside that grid becomes invisible.</p>
+      <div class="findings">
+        <div class="finding"><div class="fn">FINDING 01</div>
+          <div class="ft">No forbidden variable — real bias anyway.</div>
+          <div class="fb">The model used no income and no group label, yet it denied aid to a third of the poor, and the burden
+          fell along the map: ~15% missed near the capital, roughly half in the outer islands. Bias did not require prejudice.
+          It only required a broken proxy.</div></div>
+        <div class="finding"><div class="fn">FINDING 02</div>
+          <div class="ft">The most powerful idea of fairness is the one that goes blind here.</div>
+          <div class="fb">"It used no protected data" — the standard with the most authority in law and in engineering review — is
+          the single framework that declares this machine innocent, and in doing so erases the regional gap from view. Three
+          frameworks from the course see the harm at once; they only disagree on the cure.</div></div>
+        <div class="finding"><div class="fn">FINDING 03</div>
+          <div class="ft">Fixing it means abandoning colorblindness.</div>
+          <div class="fb">In Exhibit D the only allocation that repaired the gap had to steer aid <em>by region</em> — to look at the
+          group the colorblind rule forbids. You can treat every household by one identical rule, or distribute aid justly across
+          regions. Not both. The formula decides for you, in silence, for 270 million people.</div></div>
+      </div>
+      <div class="closingq">If a state can only help what it can count, then the first question of justice is no longer
+      "is the model accurate?" — it is: who decided what would be allowed to become data, and who disappeared in the gap between
+      what is true and what is countable?</div>
+    </section>
+  </div>
+
+  <footer>
+    <h3>Sources &amp; method</h3>
+    <ol>
+      <li>James C. Scott, <em>Seeing Like a State: How Certain Schemes to Improve the Human Condition Have Failed</em> (Yale Univ. Press, 1998) — legibility and the politics of state simplification.</li>
+      <li>V. Alatas, A. Banerjee, R. Hanna, B. Olken &amp; J. Tobias, "Targeting the Poor: Evidence from a Field Experiment in Indonesia," <em>American Economic Review</em> 102(4) (2012): 1206–40 — proxy-means-test targeting and its errors in Indonesia. <span style="color:#94a3b4">(peer-reviewed)</span></li>
+      <li>J. Kleinberg, S. Mullainathan &amp; M. Raghavan, "Inherent Trade-Offs in the Fair Determination of Risk Scores," <em>ITCS</em> (2017) — the impossibility of satisfying competing fairness criteria at once.</li>
+      <li>Z. Obermeyer, B. Powers, C. Vogeli &amp; S. Mullainathan, "Dissecting racial bias in an algorithm used to manage the health of populations," <em>Science</em> 366 (2019): 447–53 — the broken-proxy mechanism, taught in our Week 6 lecture.</li>
+      <li>Norman Daniels, "Three Questions of Justice" / <em>Just Health</em> — health, the normal opportunity range, and socially controllable factors. <span style="color:#94a3b4">(COLLEGE 117, Week 1)</span></li>
+      <li>John Rawls, <em>A Theory of Justice</em> (1971) — fair equality of opportunity and the position of the worst-off. <span style="color:#94a3b4">(COLLEGE 117, Week 1)</span></li>
+      <li>R. Faden &amp; M. Powers, on sufficiency, "decent lives," and systematic disadvantage. <span style="color:#94a3b4">(COLLEGE 117, Week 5)</span></li>
+      <li>D. Martschenko &amp; N. Martinez-Martin, "Medical AI &amp; Global Justice" lecture, incl. Pratt's five dimensions of social justice. <span style="color:#94a3b4">(COLLEGE 117, Week 6)</span></li>
+    </ol>
+    <div class="meta">
+      <strong>About the model.</strong> The 1,000 households are synthetic, generated by a fixed-seed simulation. True poverty is
+      a hidden variable; the algorithm you train is a real logistic regression that sees only the proxies you select and runs
+      entirely in your browser. The regional pattern of exclusion is an emergent property of training a poverty model on
+      legibility-biased proxies — the same structural failure documented for real proxy-means-test systems — not a number typed
+      in by hand. No real persons, no income data, no PII. <br><br>
+      Open <code>index.html</code> in any browser. No internet connection required.
+    </div>
+  </footer>
+</div>
+
+<script>
+// ===================== synthetic population (fixed seed) =====================
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function randn(rng){let u=0,v=0;while(u===0)u=rng();while(v===0)v=rng();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function sigmoid(x){return 1/(1+Math.exp(-x));}
+
+const N=1000;
+const REGIONS=["Jakarta urban","Java rural","Outer islands"];
+const RCOL=["var(--r-urban)","var(--r-rural)","var(--r-outer)"];
+
+function generate(seed){
+  const rng=mulberry32(seed), pts=[];
+  for(let i=0;i<N;i++){
+    const u=rng();
+    const r = u<0.45?0 : u<0.80?1 : 2;
+    const baseHardship=[0.0,0.55,0.85][r];
+    const z = baseHardship + 0.95*randn(rng);
+    const trulyPoor = z > 0.65 ? 1 : 0;
+    const legBias=[0.0,0.55,0.85][r];
+    const v = z - legBias + 0.45*randn(rng);
+    const floor = Math.max(8, Math.round(58 - 11*v + 6*randn(rng)));
+    const watt  = Math.max(450, Math.round(1250 - 240*v + 120*randn(rng)));
+    const asset = Math.max(0, Math.min(3, Math.round(1.6 - 0.9*v + 0.8*randn(rng))));
+    const roof  = sigmoid(1.3 - 1.1*v + 0.6*randn(rng));
+    const toilet= sigmoid(1.1 - 1.0*v + 0.6*randn(rng))>0.5?1:0;
+    const hh    = Math.max(1, Math.round(3.6 + 0.5*v + randn(rng)));
+    pts.push({i,r,z,trulyPoor,floor,watt,asset,roof,toilet,hh});
+  }
+  return pts;
+}
+const pts=generate(7);
+
+// ===================== proxy definitions =====================
+const PROXIES=[
+  {key:"floor", nm:"Floor area",       ds:"m² of living space"},
+  {key:"watt",  nm:"Electricity",      ds:"connection capacity (VA)"},
+  {key:"asset", nm:"Assets",           ds:"motorbike · fridge · phone"},
+  {key:"roof",  nm:"Roof quality",     ds:"durable vs. makeshift"},
+  {key:"toilet",nm:"Private toilet",   ds:"owns vs. shares/none"},
+  {key:"hh",    nm:"Household size",   ds:"number of people"},
+];
+const proxBox=document.getElementById('proxies');
+PROXIES.forEach(px=>{
+  const l=document.createElement('label'); l.className='px';
+  l.innerHTML='<input type="checkbox" value="'+px.key+'" checked><span><span class="nm">'+px.nm+'</span><span class="ds">'+px.ds+'</span></span>';
+  l.querySelector('input').addEventListener('change',e=>{
+    l.classList.toggle('off',!e.target.checked);
+    needsTrain();
+  });
+  proxBox.appendChild(l);
+});
+function selectedFeats(){return [...proxBox.querySelectorAll('input:checked')].map(i=>i.value);}
+
+// ===================== model =====================
+function design(feats){return pts.map(p=>feats.map(f=>p[f]));}
+function standardize(X){
+  const d=X[0].length, mean=Array(d).fill(0), std=Array(d).fill(0);
+  X.forEach(r=>r.forEach((x,j)=>mean[j]+=x)); mean.forEach((_,j)=>mean[j]/=X.length);
+  X.forEach(r=>r.forEach((x,j)=>std[j]+=(x-mean[j])**2));
+  std.forEach((_,j)=>std[j]=Math.sqrt(std[j]/X.length)||1);
+  return {Xs:X.map(r=>r.map((x,j)=>(x-mean[j])/std[j]))};
+}
+let model=null, probs=[], strategy="accuracy";
+const y=pts.map(p=>p.trulyPoor);
+
+// ===================== UI refs =====================
+const budget=document.getElementById('budget'), budgetLab=document.getElementById('budgetLab'),
+  slotLab=document.getElementById('slotLab');
+const trainBtn=document.getElementById('trainBtn'), trainBox=document.getElementById('train'),
+  revealBtn=document.getElementById('revealBtn'), revealEl=document.getElementById('reveal');
+const trainIt=document.getElementById('trainIt'), weightsEl=document.getElementById('weights');
+const lossCanvas=document.getElementById('lossCanvas'), lctx=lossCanvas.getContext('2d');
+
+function budgetSlots(){return Math.round(N*(+budget.value/100));}
+function updateBudget(){
+  budgetLab.textContent=budget.value+'%'; slotLab.textContent=budgetSlots();
+  if(model){allocate();renderAll();}
+}
+budget.addEventListener('input',updateBudget);
+
+function needsTrain(){
+  model=null; probs=[]; revealBtn.disabled=true;
+  revealEl.classList.remove('show'); trainBox.classList.remove('show');
+  document.getElementById('predict').classList.remove('show');
+  document.getElementById('predResult').classList.remove('show');
+}
+
+// ---- hypothesis (predict-then-test) ----
+let predRegionVal=null;
+const predExcl=document.getElementById('predExcl'), predExclLab=document.getElementById('predExclLab');
+predExcl.addEventListener('input',()=>{predExclLab.textContent=predExcl.value+'%';});
+document.querySelectorAll('#predRegion button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#predRegion button').forEach(x=>x.classList.toggle('sel',x===b));
+  predRegionVal=+b.dataset.r;
+}));
+
+// ===================== training (animated gradient descent) =====================
+let lossHist=[];
+function train(){
+  const feats=selectedFeats();
+  if(feats.length===0){alert("Give the algorithm at least one clue to learn from.");return;}
+  const {Xs}=standardize(design(feats));
+  const d=feats.length; let w=Array(d).fill(0), b=0;
+  lossHist=[]; trainBox.classList.add('show'); revealBtn.disabled=true;
+  // weight rows
+  weightsEl.innerHTML=feats.map(f=>{const nm=PROXIES.find(p=>p.key===f).nm;
+    return '<div class="wrow"><span>'+nm+'</span><div class="wtrack"><div class="wfill" data-f="'+f+'"></div></div><span class="wnum" data-n="'+f+'">0.00</span></div>';}).join('');
+
+  const TOTAL=40, ITERS=18, lr=0.5;
+  let frame=0;
+  function step(){
+    for(let t=0;t<ITERS;t++){
+      const gw=Array(d).fill(0); let gb=0, loss=0;
+      for(let i=0;i<N;i++){
+        const p=sigmoid(Xs[i].reduce((s,x,j)=>s+x*w[j],b));
+        const e=p-y[i];
+        for(let j=0;j<d;j++) gw[j]+=e*Xs[i][j];
+        gb+=e;
+        loss+=-(y[i]*Math.log(p+1e-9)+(1-y[i])*Math.log(1-p+1e-9));
+      }
+      for(let j=0;j<d;j++) w[j]-=lr*(gw[j]/N);
+      b-=lr*(gb/N);
+      if(t===ITERS-1) lossHist.push(loss/N);
+    }
+    frame++;
+    const curLoss=lossHist[lossHist.length-1];
+    trainIt.textContent='iter '+(frame*ITERS)+' · loss '+curLoss.toFixed(3);
+    const maxAbs=Math.max(...w.map(Math.abs),0.5);
+    feats.forEach((f,j)=>{
+      const fill=weightsEl.querySelector('.wfill[data-f="'+f+'"]');
+      const num=weightsEl.querySelector('.wnum[data-n="'+f+'"]');
+      const frac=Math.abs(w[j])/maxAbs;
+      fill.style.left=w[j]<0?(50-frac*50)+'%':'50%';
+      fill.style.width=(frac*50)+'%';
+      fill.style.background=w[j]<0?'var(--red)':'var(--teal)';
+      num.textContent=w[j].toFixed(2);
+    });
+    drawLoss();
+    if(frame<TOTAL){requestAnimationFrame(step);}
+    else{
+      model={w,b,feats,Xs};
+      probs=Xs.map(r=>sigmoid(r.reduce((s,x,j)=>s+x*w[j],b)));
+      revealBtn.disabled=false;
+      document.getElementById('predict').classList.add('show');
+    }
+  }
+  step();
+}
+function drawLoss(){
+  const W=lossCanvas.width=lossCanvas.clientWidth, H=lossCanvas.height=lossCanvas.clientHeight;
+  lctx.clearRect(0,0,W,H);
+  if(lossHist.length<2)return;
+  const mx=Math.max(...lossHist), mn=Math.min(...lossHist), rng=(mx-mn)||1;
+  lctx.strokeStyle='#3bc6ad'; lctx.lineWidth=2; lctx.beginPath();
+  lossHist.forEach((l,i)=>{
+    const x=(i/(40-1))*W, yv=H-8-((l-mn)/rng)*(H-16);
+    i?lctx.lineTo(x,yv):lctx.moveTo(x,yv);
+  });
+  lctx.stroke();
+}
+trainBtn.addEventListener('click',train);
+revealBtn.addEventListener('click',()=>{
+  allocate(); renderAll();
+  revealEl.classList.add('show');
+  revealEl.scrollIntoView({behavior:'smooth',block:'start'});
+});
+
+// ===================== allocation strategies =====================
+let selected=new Set();
+function allocate(){
+  const B=budgetSlots(); selected=new Set();
+  if(strategy==="accuracy"){
+    [...pts.keys()].sort((a,b)=>probs[b]-probs[a]).slice(0,B).forEach(i=>selected.add(i));
+  } else if(strategy==="parity"){
+    for(let r=0;r<3;r++){
+      const idx=pts.filter(p=>p.r===r).map(p=>p.i);
+      const slots=Math.round(B*idx.length/N);
+      idx.sort((a,b)=>probs[b]-probs[a]).slice(0,slots).forEach(i=>selected.add(i));
+    }
+  } else if(strategy==="worstoff"){
+    const poorBy=[0,1,2].map(r=>pts.filter(p=>p.r===r&&p.trulyPoor).length);
+    const tot=poorBy.reduce((a,c)=>a+c,0);
+    for(let r=0;r<3;r++){
+      const idx=pts.filter(p=>p.r===r).map(p=>p.i);
+      const slots=Math.min(idx.length,Math.round(B*poorBy[r]/tot));
+      idx.sort((a,b)=>probs[b]-probs[a]).slice(0,slots).forEach(i=>selected.add(i));
+    }
+  }
+}
+
+// ===================== metrics =====================
+function metrics(sel){
+  let TP=0,FP=0,FN=0,TN=0;
+  pts.forEach(p=>{const s=sel.has(p.i),poor=p.trulyPoor;
+    if(s&&poor)TP++;else if(s&&!poor)FP++;else if(!s&&poor)FN++;else TN++;});
+  const cov=[0,1,2].map(r=>{const poor=pts.filter(p=>p.r===r&&p.trulyPoor);
+    const got=poor.filter(p=>sel.has(p.i)).length;
+    return {n:poor.length,cov:poor.length?100*got/poor.length:0};});
+  const covVals=cov.map(c=>c.cov);
+  return {TP,FP,FN,TN,
+    poorCovered:TP, exclRate:100*FN/(TP+FN), leak:100*FP/(TP+FP||1),
+    cov, spread:Math.max(...covVals)-Math.min(...covVals)};
+}
+
+// ===================== render: Exhibit B =====================
+function renderAll(){ renderReveal(); drawScatter(); renderAudit(); }
+
+// ===================== Exhibit C: the evidence map (draggable) =====================
+const scatter=document.getElementById('scatter'), sctx=scatter.getContext('2d');
+let colorByRegion=false;
+const yj=pts.map(p=>{let h=((p.i+1)*2654435761)>>>0; return (h%1000)/1000;});
+function scatterSelected(){
+  const B=budgetSlots();
+  return new Set([...pts.keys()].sort((a,b)=>probs[b]-probs[a]).slice(0,B));
+}
+function thresholdProb(){
+  const B=budgetSlots(), sorted=[...probs].sort((a,b)=>b-a);
+  return sorted[Math.min(B,sorted.length-1)];
+}
+function drawScatter(){
+  if(!probs.length) return;
+  const dpr=window.devicePixelRatio||1, W=scatter.clientWidth, H=scatter.clientHeight;
+  scatter.width=W*dpr; scatter.height=H*dpr; sctx.setTransform(dpr,0,0,dpr,0,0);
+  sctx.clearRect(0,0,W,H);
+  const pad=16, plotW=W-pad*2, plotH=H-pad*2, th=thresholdProb(), xline=pad+th*plotW;
+  sctx.fillStyle='rgba(229,84,75,0.05)'; sctx.fillRect(pad,pad,xline-pad,plotH);
+  sctx.fillStyle='rgba(59,198,173,0.06)'; sctx.fillRect(xline,pad,W-pad-xline,plotH);
+  pts.forEach(p=>{
+    const x=pad+probs[p.i]*plotW, y=pad+yj[p.i]*plotH;
+    const col=colorByRegion?RCOLHEX[p.r]:(p.trulyPoor?'#e5544b':'#5a6b7d');
+    sctx.globalAlpha=p.trulyPoor?0.95:0.45; sctx.fillStyle=col;
+    sctx.beginPath(); sctx.arc(x,y,p.trulyPoor?3.2:2.3,0,7); sctx.fill();
+  });
+  sctx.globalAlpha=1;
+  sctx.strokeStyle='#e8b04b'; sctx.lineWidth=2; sctx.setLineDash([5,4]);
+  sctx.beginPath(); sctx.moveTo(xline,pad-3); sctx.lineTo(xline,H-pad+3); sctx.stroke(); sctx.setLineDash([]);
+  const sel=scatterSelected(); let poorIn=0,poorOut=0;
+  pts.forEach(p=>{ if(sel.has(p.i)){ if(p.trulyPoor)poorIn++; } else if(p.trulyPoor)poorOut++; });
+  document.getElementById('scRead').innerHTML='aid given to <span class="read">'+sel.size+'</span> · '+
+    'poor reached <span class="read" style="color:var(--teal)">'+poorIn+'</span> · '+
+    'poor wrongly denied <span class="read" style="color:var(--red)">'+poorOut+'</span>';
+}
+const RCOLHEX=['#7aa2f7','#e8b04b','#e5544b'];
+function scatterFromX(clientX){
+  const rect=scatter.getBoundingClientRect(), pad=16;
+  let frac=(clientX-rect.left-pad)/(rect.width-pad*2); frac=Math.max(0,Math.min(1,frac));
+  const cnt=probs.filter(pr=>pr>=frac).length;
+  let pct=Math.max(15,Math.min(45,Math.round(100*cnt/N)));
+  if(+budget.value!==pct){ budget.value=pct; updateBudget(); } else { drawScatter(); }
+}
+let dragging=false;
+scatter.addEventListener('mousedown',e=>{dragging=true;scatterFromX(e.clientX);});
+window.addEventListener('mousemove',e=>{if(dragging)scatterFromX(e.clientX);});
+window.addEventListener('mouseup',()=>dragging=false);
+scatter.addEventListener('touchstart',e=>{if(e.touches[0])scatterFromX(e.touches[0].clientX);},{passive:true});
+scatter.addEventListener('touchmove',e=>{if(e.touches[0])scatterFromX(e.touches[0].clientX);},{passive:true});
+document.getElementById('regionToggle').addEventListener('click',function(){
+  colorByRegion=!colorByRegion; this.classList.toggle('on',colorByRegion);
+  this.textContent=colorByRegion?'Coloring: by region':'Coloring: by true poverty';
+  drawScatter();
+});
+window.addEventListener('resize',()=>{ if(probs.length) drawScatter(); });
+let predScored=false;
+function scorePrediction(m){
+  const guess=+predExcl.value, actual=m.exclRate;
+  const regExcl=m.cov.map((c,r)=>({r,excl:100-c.cov}));
+  const worst=regExcl.slice().sort((a,b)=>b.excl-a.excl)[0].r;
+  const close=Math.abs(guess-actual)<=7, regionHit=predRegionVal===worst;
+  let h='<b>Your hypothesis, tested.</b><br>';
+  h+='You predicted <b>'+guess+'%</b> of the poor would be excluded. The machine excluded <b>'+actual.toFixed(0)+'%</b>. '+
+     '<span class="'+(close?'hit':'miss')+'">'+(close?'You called it.':(guess<actual?'Almost everyone guesses too low — the failure is larger than it looks.':'You over-estimated — but watch where it lands.'))+'</span><br>';
+  if(predRegionVal!==null)
+    h+='You bet the worst-hit region would be <b>'+REGIONS[predRegionVal]+'</b>. It was <b>'+REGIONS[worst]+'</b>. '+
+       '<span class="'+(regionHit?'hit':'miss')+'">'+(regionHit?'Correct — the further from the capital, the more invisible.':'It concentrates the further you get from the capital.')+'</span>';
+  const el=document.getElementById('predResult'); el.innerHTML=h; el.classList.add('show');
+}
+function renderReveal(){
+  const m=metrics(selected);
+  if(!predScored){ scorePrediction(m); predScored=true; }
+  document.getElementById('exclBig').textContent=m.exclRate.toFixed(0)+'%';
+  document.getElementById('cTP').textContent=m.TP;
+  document.getElementById('cFP').textContent=m.FP;
+  document.getElementById('cFN').textContent=m.FN;
+  document.getElementById('cTN').textContent=m.TN;
+
+  const reg=document.getElementById('regions');
+  const maxExcl=Math.max(...m.cov.map(c=>100-c.cov),1);
+  reg.innerHTML=m.cov.map((c,r)=>{
+    const excl=100-c.cov;
+    return '<div class="rrow"><span class="rn" style="color:'+RCOL[r]+'">'+REGIONS[r]+'</span>'+
+      '<div class="rtrack"><div class="rfill" style="width:'+(100*excl/maxExcl)+'%;background:'+RCOL[r]+'"></div></div>'+
+      '<span class="rp">'+excl.toFixed(0)+'% lost</span></div>';
+  }).join('');
+
+  // who vanished: excluded truly-poor, prefer outer islands, most extreme
+  const vanished=pts.filter(p=>p.trulyPoor && !selected.has(p.i))
+    .sort((a,b)=> (b.r-a.r) || (a.floor-b.floor)).slice(0,3);
+  const reasons=p=>{
+    const rs=[];
+    if(p.asset>=1) rs.push('owns a motorbike the family needs to earn');
+    if(p.watt>=900) rs.push('has an electricity connection');
+    if(p.roof>0.5) rs.push('a roof that still reads as "durable"');
+    if(p.floor>22) rs.push(p.floor+' m² of floor — large for its '+p.hh+' people');
+    if(rs.length===0) rs.push('clues that fell just over the cutoff');
+    return rs.slice(0,2).join(', ');
+  };
+  document.getElementById('files').innerHTML=vanished.map(p=>
+    '<div class="vfile"><div class="vh">Household #'+(p.i+1)+' · '+REGIONS[p.r]+'</div>'+
+    '<div class="vid">Truly poor · denied</div>'+
+    '<div class="vd">'+p.hh+' people · '+p.floor+' m² · '+p.watt+' VA · '+(p.toilet?'private':'shared')+' toilet. '+
+    'The formula scored them safe because they '+reasons(p)+'.</div>'+
+    '<span class="vstamp">CASE CLOSED — UNSEEN</span></div>').join('');
+
+  const m2=metrics(selected);
+  document.getElementById('mechNote').innerHTML=
+    'You spent the entire budget. Yet <strong>'+m2.FN+'</strong> families who are genuinely poor received nothing, while '+
+    '<strong>'+m2.FP+'</strong> slots went to households that are not poor at all — the price of guessing need from its shadow. '+
+    'Change the clues in Exhibit A, retrain, and watch who appears and who vanishes. The machine is never broken. It is doing '+
+    'exactly what it was asked: finding what is <em>legible</em>, and calling it the truth.';
+}
+
+// ===================== render: Exhibit C =====================
+const STRATS=[
+  {key:"accuracy",nm:"One identical rule for all",tt:"colorblind · the legally safe option"},
+  {key:"parity",  nm:"Equal slots per region",tt:"uses region — but naively"},
+  {key:"worstoff",nm:"Slots follow real poverty rates",tt:"substantive equality"},
+];
+const stratBox=document.getElementById('strat');
+stratBox.innerHTML=STRATS.map(s=>'<button class="st'+(s.key==="accuracy"?' active':'')+'" data-s="'+s.key+'">'+
+  s.nm+'<span class="stt">'+s.tt+'</span></button>').join('');
+stratBox.querySelectorAll('.st').forEach(b=>b.addEventListener('click',()=>{
+  strategy=b.dataset.s;
+  stratBox.querySelectorAll('.st').forEach(x=>x.classList.toggle('active',x===b));
+  allocate(); renderAll();
+}));
+
+function renderAudit(){
+  const results=STRATS.map(s=>{
+    const saved=strategy; strategy=s.key; allocate();
+    const m=metrics(selected); strategy=saved;
+    return {s,m};
+  });
+  allocate(); // restore current
+  const bestCovered=Math.max(...results.map(r=>r.m.poorCovered));
+  const bestSpread=Math.min(...results.map(r=>r.m.spread));
+  const bestLeak=Math.min(...results.map(r=>r.m.leak));
+  let rows='<tr><th>Fairness goal</th><th>Poor families reached</th><th>Regional gap in coverage</th><th>Budget leaked to non-poor</th></tr>';
+  results.forEach(r=>{
+    const cur=r.s.key===strategy;
+    rows+='<tr style="'+(cur?'background:rgba(232,176,75,.06)':'')+'">'+
+      '<td>'+r.s.nm+(cur?' ◀':'')+'</td>'+
+      '<td class="mono '+(r.m.poorCovered===bestCovered?'best':'')+'">'+r.m.poorCovered+'</td>'+
+      '<td class="mono '+(Math.abs(r.m.spread-bestSpread)<0.5?'best':(r.m.spread===Math.max(...results.map(x=>x.m.spread))?'worst':''))+'">'+r.m.spread.toFixed(0)+' pts</td>'+
+      '<td class="mono '+(Math.abs(r.m.leak-bestLeak)<0.5?'best':'')+'">'+r.m.leak.toFixed(0)+'%</td></tr>';
+  });
+  document.getElementById('auditTbl').innerHTML=rows;
+  document.getElementById('imposs').innerHTML=
+    '<b>One row clearly does best — and notice what it costs.</b> "Slots follow real poverty rates" reaches more poor families, '+
+    'nearly closes the gap between regions, <em>and</em> wastes less budget. It wins on every number. But it can only do this by '+
+    'allocating <b>by region</b> — deliberately steering a larger share to the outer islands because that is where poverty is '+
+    'densest. The two rows above it apply one logic to every household and so cannot see the gap, let alone close it. Here is the '+
+    'trap: you can have an algorithm that treats every household by an <b>identical, colorblind rule</b>, or one that delivers aid '+
+    '<b>justly across regions</b> — not both. That choice, formal equality of treatment versus substantive equality of outcome, is '+
+    'the oldest argument in anti-discrimination law (see Kleinberg et al. on why competing fairness criteria conflict) — and the '+
+    'formula settles it by default, in silence, for 270 million people.';
+}
+
+// ===================== Exhibit D: justice lenses =====================
+const verdicts={
+  colorblind:{cls:'fair',stamp:'No violation — "fair"',title:'Anti-classification — fairness as similar treatment',
+    body:'The most powerful definition of fairness in law and in engineering review: a system is fair if it does not <em>use</em> a forbidden variable. This machine never saw income, never saw ethnicity, never even saw region — only roofs and watts. By this test it is spotless, and it returns a verdict of <strong>no discrimination</strong>. And in doing so it makes the entire regional gap you measured vanish from the audit, because the audit was never allowed to look at it. The most authoritative fairness standard is the one structurally blind to this harm.<br><span class="cite">Frames "fairness as similar treatment" from the Week 6 Med-AI lecture; the same blind spot Obermeyer et al. (2019) exposed.</span>'},
+  rawls:{cls:'unjust',stamp:'Unjust',title:'Fair equality of opportunity — Rawls → Daniels',
+    body:'Rawls makes fair equality of opportunity a demand of justice; Daniels carries it into welfare and health, arguing a deprivation is unjust when it "derives from an unjust distribution of the socially controllable factors" shaping people\'s life chances. This algorithm <strong>is</strong> such a socially controllable factor: it strips the program from exactly the families whose need is greatest but least legible, narrowing their opportunity precisely because the state had already overlooked them. Judged on outcomes for the worst-off, it fails — and "we used no forbidden variable" is no defense at all.<br><span class="cite">Daniels, "Three Questions of Justice" (Wk 1); Rawls, <em>A Theory of Justice</em> (1971).</span>'},
+  faden:{cls:'unjust',stamp:'Unjust',title:'Sufficiency &amp; well-being — Faden &amp; Powers',
+    body:'Faden and Powers ask whether each person can reach a <strong>sufficient level of well-being</strong> across the core dimensions of a decent life — and whether a practice entrenches <em>systematic, compounding disadvantage</em>. Denying cash aid to the poorest families in the poorest regions does exactly that: it deepens an existing deprivation along an existing fault line. Intent and inputs are beside the point; what the framework weighs is whether real people are pushed further below a decent life. Here they are. Unjust.<br><span class="cite">Faden &amp; Powers on sufficiency and "decent lives" (Wk 5; Wk 6 lecture).</span>'},
+  efficiency:{cls:'accurate',stamp:'Accurate — wrong question',title:'Efficiency — "Does the model work?"',
+    body:'Engineers can honestly report that the model is <em>accurate</em>: it predicts the proxies it was trained on, and predicts them well. That is the trap. The proxies were chosen as a <strong>stand-in for need</strong>, and for the rural and remote poor that stand-in is broken — so a technically excellent model optimizes a target that is wrong for the people who matter most. As the Week 6 lecture warns, this lens fixes on "the model\'s performance rather than a valued outcome which speaks to social value." Accuracy cannot tell you that you measured the wrong thing.<br><span class="cite">Martschenko &amp; Martinez-Martin, COLLEGE 117 Wk 6 lecture, on model performance vs. valued outcomes.</span>'}
+};
+const lensBtns=[...document.querySelectorAll('.lens')];
+lensBtns.forEach(b=>b.addEventListener('click',()=>{
+  lensBtns.forEach(x=>x.classList.toggle('active',x===b));
+  const v=verdicts[b.dataset.lens];
+  document.getElementById('verdict').innerHTML=
+    '<span class="stamp '+v.cls+'">'+v.stamp+'</span>'+
+    '<div style="font-weight:700;margin-bottom:6px">'+v.title+'</div>'+
+    '<div style="color:#c6d2de">'+v.body+'</div>';
+}));
+
+// ===================== Exhibit E: Pratt's five dimensions =====================
+const PRATT=[
+  {d:"Power",sev:"high",t:"The poor never see the formula, cannot contest a denial, and had no say in which clues count. Authority over who is ‘poor’ moves from communities to an opaque score."},
+  {d:"Recognition",sev:"high",t:"Poverty that doesn’t fit the capital’s material template — the motorbike for gig work, the self-built house — is not recognized as poverty at all. The unfamiliar poor are misread as comfortable."},
+  {d:"Harmony",sev:"mid",t:"By routing aid along legibility rather than need, the system can deepen resentment between regions and erode trust that the state sees its citizens at all."},
+  {d:"Inclusion",sev:"high",t:"The people most excluded from the program are the rural and remote — already the most excluded from infrastructure, services, and the state’s gaze. Exclusion compounds."},
+  {d:"Well-being",sev:"high",t:"The concrete output is withheld cash from families below subsistence: less food, less medicine, less schooling — a direct subtraction from well-being, justified as efficiency."},
+];
+document.getElementById('pratt').innerHTML=PRATT.map(p=>
+  '<div class="pcard"><div class="pd">'+p.d+'</div>'+
+  '<div class="pscore'+(p.sev==="mid"?" mid":"")+'">'+(p.sev==="mid"?"At risk":"Harm")+'</div>'+
+  '<div class="more">tap to read +</div>'+
+  '<div class="pt">'+p.t+'</div></div>').join('');
+document.querySelectorAll('#pratt .pcard').forEach(c=>c.addEventListener('click',()=>c.classList.toggle('open')));
+
+// ===================== reset =====================
+document.getElementById('resetBtn').addEventListener('click',()=>{
+  needsTrain(); strategy="accuracy"; predScored=false; predRegionVal=null;
+  predExcl.value=15; predExclLab.textContent='15%';
+  document.querySelectorAll('#predRegion button').forEach(x=>x.classList.remove('sel'));
+  stratBox.querySelectorAll('.st').forEach((x,i)=>x.classList.toggle('active',i===0));
+  lensBtns.forEach(x=>x.classList.remove('active'));
+  document.getElementById('verdict').innerHTML='<span style="color:var(--muted)">Pick a lens. Each renders a verdict on the <em>same</em> outcome you just produced — and they cannot all be satisfied at once, which is the whole point.</span>';
+  window.scrollTo({top:0,behavior:'smooth'});
+});
+
+updateBudget();
+</script>
+</body>
+</html>
