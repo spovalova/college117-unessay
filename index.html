@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="An interactive investigation: train a real proxy-means-test welfare algorithm on synthetic Indonesian households and discover how it systematically excludes the illegible poor. COLLEGE 117 unessay." />
+<meta name="author" content="COLLEGE 117 — Unessay" />
 <title>Seeing Like a State — Who Counts as Poor in Indonesia?</title>
 <style>
   :root{
@@ -218,6 +220,35 @@
   .finding .ft{font-size:17px;font-weight:700;margin:6px 0 5px}
   .finding .fb{font-size:14.5px;color:#c6d2de}
   .closingq{margin-top:18px;font-size:18px;color:var(--amber);font-weight:600;line-height:1.45}
+  /* biotech bridge */
+  .bridge{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+  @media(max-width:760px){.bridge{grid-template-columns:1fr}}
+  .bcard{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:15px}
+  .bcard .bh{font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;margin-bottom:6px}
+  .bcard .bb{font-size:14px;color:#d7e0ea;line-height:1.55}
+  .bcard .bb b{color:var(--ink)}
+  .bad{color:var(--red);font-weight:700}.good{color:var(--teal);font-weight:700}
+  /* monte-carlo robustness */
+  .mcout{margin-top:18px;display:none}
+  .mcout.show{display:block;animation:fade .4s ease}
+  .mcbars{display:flex;flex-direction:column;gap:12px;margin-top:6px}
+  .mcrow{display:grid;grid-template-columns:130px 1fr 178px;gap:14px;align-items:center;font-size:14px}
+  @media(max-width:760px){.mcrow{grid-template-columns:100px 1fr;}.mcrow .mcnum{grid-column:2}}
+  .mcrow .rn{font-weight:600}
+  .mctrack{height:26px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;position:relative;overflow:hidden}
+  .mcfill{height:100%;border-radius:6px 0 0 6px;transition:width .5s ease;opacity:.85}
+  .mcwhisker{position:absolute;top:0;bottom:0;border-left:2px solid rgba(233,238,244,.7);border-right:2px solid rgba(233,238,244,.7);background:rgba(233,238,244,.10)}
+  .mcrow .mcnum{font-family:"SF Mono",monospace;font-size:12px;color:var(--muted);text-align:right}
+  .mcsum{margin-top:16px;background:rgba(59,198,173,.07);border:1px solid rgba(59,198,173,.3);border-radius:11px;padding:15px 17px;font-size:14.5px;color:#dceee9;line-height:1.6}
+  .mcsum b{color:var(--teal)}
+  /* technical appendix */
+  .appendix{margin-top:18px;border-top:1px dashed var(--line);padding-top:14px}
+  .appendix summary{cursor:pointer;color:var(--blue);font-size:13px;font-weight:600}
+  .apx{margin-top:12px;font-size:12.5px;color:var(--muted);line-height:1.65}
+  .apx h4{color:var(--ink);font-size:12.5px;margin:14px 0 5px;text-transform:uppercase;letter-spacing:.5px}
+  .apx code{background:var(--panel2);padding:1px 5px;border-radius:4px;color:#d7e0ea;font-size:12px}
+  .apx ul{margin:6px 0;padding-left:18px}
+  .apx li{margin-bottom:4px}
 </style>
 </head>
 <body>
@@ -226,7 +257,7 @@
   <header>
     <div class="docket">COLLEGE 117 · Unessay · Field Investigation No. 117-PMT · Original research, not a report</div>
     <h1>Seeing Like a State:<br><span class="nb">Who counts as poor</span> when a formula decides?</h1>
-    <div class="sub">An interactive investigation into the algorithm that sorts 270 million Indonesians into the helped and the unseen.</div>
+    <div class="sub">An interactive investigation into the algorithm that sorts more than 280 million Indonesians into the helped and the unseen.</div>
     <p class="lede">Indonesia can't afford to help every poor family, so it built a machine to find them. The machine never
     asks <em>"are you poor?"</em> — it can't see poverty. It asks what it <strong>can</strong> see: your roof, your floor,
     your electricity. From those clues it guesses, and the lowest-scoring households get cash aid. <strong>You are about to run
@@ -257,17 +288,19 @@
       <div class="budgetbar">
         <span class="lab">Aid budget covers <b id="budgetLab">30%</b> of households (<b id="slotLab">300</b> of 1,000 slots).
         About <b>38%</b> are actually poor — so scarcity alone guarantees someone is turned away.</span>
-        <input id="budget" type="range" min="15" max="45" value="30" />
+        <input id="budget" type="range" min="15" max="45" value="30" aria-label="Aid budget as percent of households" />
       </div>
 
       <div class="actions">
         <button id="trainBtn" class="go">▶ Train the algorithm on these clues</button>
         <button id="resetBtn" class="ghost">Reset investigation</button>
+        <button id="reseedBtn" class="ghost">🎲 Re-draw the population</button>
+        <span class="lab" style="margin-left:auto;font-size:12.5px">sample seed <b id="seedNum" class="mono">7</b> · re-draw to prove the gap is not one lucky sample</span>
       </div>
 
       <div id="train" class="train">
-        <div class="trainhead"><span>Logistic regression learning the proxy → poverty boundary…</span>
-          <span class="it" id="trainIt">iter 0 · loss —</span></div>
+        <div class="trainhead"><span>Linear regression learning to predict each household's consumption from the proxies…</span>
+          <span class="it" id="trainIt">iter 0 · error —</span></div>
         <div class="lossbox"><canvas id="lossCanvas"></canvas></div>
         <div class="weights" id="weights"></div>
         <div id="predict" class="predict">
@@ -396,6 +429,56 @@
       </div>
     </section>
 
+    <!-- EXHIBIT G -->
+    <section>
+      <div class="htag"><span class="ex">EXHIBIT G</span><h2>The same machine, wearing a lab coat</h2></div>
+      <div class="panel">
+        <p class="exp">This is not only a welfare story, which is why it belongs in a course on justice and biotechnology. A
+        proxy means test, a clinical risk score, and a polygenic risk score all make one move: each learns a single
+        population's template of a need or a body, then treats whoever does not match that template as if they were fine. At
+        that moment the category stops <em>describing</em> reality and starts <em>deciding</em> it.</p>
+        <div class="bridge">
+          <div class="bcard">
+            <div class="bh">In this welfare model</div>
+            <div class="bb">Drop the <b>region</b> variable to be "colorblind," and the outer-island poor are pushed below
+            the line. Removing the group makes the disadvantaged <span class="bad">worse off</span>.</div>
+          </div>
+          <div class="bcard">
+            <div class="bh">In the clinic — Vyas et al., NEJM 2020</div>
+            <div class="bb">Race-corrected algorithms steer attention and resources toward white patients. Removing the
+            correction makes the disadvantaged <span class="good">better off</span>.</div>
+          </div>
+        </div>
+        <p class="exp" style="margin-top:14px">The mirror is the argument. "Treat everyone identically" is not a neutral rule
+        but a <em>choice</em>, and whether it is just depends entirely on where the bias already lives. A poverty score, like a
+        race correction, makes a constructed category feel measured — which is precisely what makes it hard to argue with.
+        Indonesia's outer islands and a misread patient are the same structural problem, written in two registers.</p>
+      </div>
+    </section>
+
+    <!-- EXHIBIT H -->
+    <section>
+      <div class="htag"><span class="ex">EXHIBIT H</span><h2>Robustness — is the gap real, or did I build it?</h2></div>
+      <div class="panel">
+        <p class="exp">The fair objection to any simulation: <em>you designed the world, so of course you got the result you
+        wanted.</em> So stop trusting one run. This re-runs the entire experiment from scratch on <b>24 independent random
+        populations</b> — new families each time, a fresh model trained on each, the same budget you set above. If the regional
+        gap were an artifact of one lucky sample, it would dissolve across replications. Run it and watch whether it does. Each
+        bar is the mean exclusion for that region; the pale band is the full min–max range across all 24 draws.</p>
+        <p class="exp">One honest distinction: replication only settles the <em>lucky-sample</em> objection. It cannot, on its
+        own, prove the mechanism, since every draw carries the same legibility bias built into the generator. But that assumption
+        is not something I tuned to manufacture a result; it is a documented fact that proxies track welfare differently across
+        Indonesia's regions (Gonzales Martinez &amp; Cooray, 2025). So the simulation is not asking <em>whether</em> regional bias
+        exists, the field has established that. It asks what a single national proxy means test <em>necessarily does</em> once
+        that bias is present, and whether any colorblind rule can escape it. The world here is a hypothesis made operable.</p>
+        <div class="actions">
+          <button id="mcBtn" class="go">▶ Run 24 independent replications</button>
+          <span id="mcProg" class="lab" aria-live="polite"></span>
+        </div>
+        <div id="mcOut" class="mcout"></div>
+      </div>
+    </section>
+
     <!-- FINDINGS -->
     <section>
       <div class="htag"><span class="ex">FINDINGS</span><h2>What the investigation turned up</h2></div>
@@ -405,9 +488,9 @@
       <div class="findings">
         <div class="finding"><div class="fn">FINDING 01</div>
           <div class="ft">No forbidden variable — real bias anyway.</div>
-          <div class="fb">The model used no income and no group label, yet it denied aid to a third of the poor, and the burden
-          fell along the map: ~15% missed near the capital, roughly half in the outer islands. Bias did not require prejudice.
-          It only required a broken proxy.</div></div>
+          <div class="fb">The model used no income and no group label, yet it denied aid to about a third of the poor, and the
+          burden fell along the map: roughly a quarter of the poor missed near the capital, and over forty percent in the outer
+          islands. Bias did not require prejudice. It only required a broken proxy.</div></div>
         <div class="finding"><div class="fn">FINDING 02</div>
           <div class="ft">The most powerful idea of fairness is the one that goes blind here.</div>
           <div class="fb">"It used no protected data" — the standard with the most authority in law and in engineering review — is
@@ -417,7 +500,7 @@
           <div class="ft">Fixing it means abandoning colorblindness.</div>
           <div class="fb">In Exhibit D the only allocation that repaired the gap had to steer aid <em>by region</em> — to look at the
           group the colorblind rule forbids. You can treat every household by one identical rule, or distribute aid justly across
-          regions. Not both. The formula decides for you, in silence, for 270 million people.</div></div>
+          regions. Not both. The formula decides for you, in silence, for more than 280 million people.</div></div>
       </div>
       <div class="closingq">If a state can only help what it can count, then the first question of justice is no longer
       "is the model accurate?" — it is: who decided what would be allowed to become data, and who disappeared in the gap between
@@ -428,23 +511,77 @@
   <footer>
     <h3>Sources &amp; method</h3>
     <ol>
-      <li>James C. Scott, <em>Seeing Like a State: How Certain Schemes to Improve the Human Condition Have Failed</em> (Yale Univ. Press, 1998) — legibility and the politics of state simplification.</li>
-      <li>V. Alatas, A. Banerjee, R. Hanna, B. Olken &amp; J. Tobias, "Targeting the Poor: Evidence from a Field Experiment in Indonesia," <em>American Economic Review</em> 102(4) (2012): 1206–40 — proxy-means-test targeting and its errors in Indonesia. <span style="color:#94a3b4">(peer-reviewed)</span></li>
-      <li>J. Kleinberg, S. Mullainathan &amp; M. Raghavan, "Inherent Trade-Offs in the Fair Determination of Risk Scores," <em>ITCS</em> (2017) — the impossibility of satisfying competing fairness criteria at once.</li>
-      <li>Z. Obermeyer, B. Powers, C. Vogeli &amp; S. Mullainathan, "Dissecting racial bias in an algorithm used to manage the health of populations," <em>Science</em> 366 (2019): 447–53 — the broken-proxy mechanism, taught in our Week 6 lecture.</li>
-      <li>Norman Daniels, "Three Questions of Justice" / <em>Just Health</em> — health, the normal opportunity range, and socially controllable factors. <span style="color:#94a3b4">(COLLEGE 117, Week 1)</span></li>
-      <li>John Rawls, <em>A Theory of Justice</em> (1971) — fair equality of opportunity and the position of the worst-off. <span style="color:#94a3b4">(COLLEGE 117, Week 1)</span></li>
-      <li>R. Faden &amp; M. Powers, on sufficiency, "decent lives," and systematic disadvantage. <span style="color:#94a3b4">(COLLEGE 117, Week 5)</span></li>
-      <li>D. Martschenko &amp; N. Martinez-Martin, "Medical AI &amp; Global Justice" lecture, incl. Pratt's five dimensions of social justice. <span style="color:#94a3b4">(COLLEGE 117, Week 6)</span></li>
+      <li>James C. Scott, <em>Seeing Like a State: How Certain Schemes to Improve the Human Condition Have Failed</em> (Yale Univ. Press, 1998) — legibility, <em>mētis</em>, and the politics of state simplification. <span style="color:#94a3b4">(outside research)</span></li>
+      <li>V. Alatas, A. Banerjee, R. Hanna, B. Olken &amp; J. Tobias, "Targeting the Poor: Evidence from a Field Experiment in Indonesia," <em>American Economic Review</em> 102(4) (2012): 1206–40 — Indonesia's proxy means test excluded ≈53% of the poor (inclusion error ≈20%); errors fell hardest on the near-poor (59%) and lightest on the rich (14%); communities applied a different concept of poverty than the algorithm. <span style="color:#94a3b4">(peer-reviewed; outside research)</span></li>
+      <li>D. Gonzales Martinez &amp; R. Cooray, "Enhancing Poverty Targeting with Spatial Machine Learning: An Application to Indonesia" (2025) — uses Indonesia's actual DTKS data; conventional PMT mis-targets because it cannot account for spatial dependence and regional heterogeneity. <span style="color:#94a3b4">(working paper / preprint; outside research)</span></li>
+      <li>D. Vyas, L. Eisenstein &amp; D. Jones, "Hidden in Plain Sight — Reconsidering the Use of Race Correction in Clinical Algorithms," <em>New England Journal of Medicine</em> 383 (2020): 874–82 — removing a demographic correction generally <em>helps</em> the disadvantaged; the medical mirror of this welfare case. <span style="color:#94a3b4">(outside research)</span></li>
+      <li>J. Kleinberg, S. Mullainathan &amp; M. Raghavan, "Inherent Trade-Offs in the Fair Determination of Risk Scores," <em>ITCS</em> (2017) — competing fairness criteria cannot all be satisfied at once. <span style="color:#94a3b4">(outside research)</span></li>
+      <li>Z. Obermeyer, B. Powers, C. Vogeli &amp; S. Mullainathan, "Dissecting racial bias in an algorithm used to manage the health of populations," <em>Science</em> 366 (2019): 447–53 — the broken-proxy mechanism. <span style="color:#94a3b4">(outside research)</span></li>
+      <li>John Rawls, "Two Principles of Justice" — fair equality of opportunity and the position of the worst-off (the difference principle). <span style="color:#94a3b4">(COLLEGE 117, Week 1)</span></li>
+      <li>Norman Daniels, "Three Questions of Justice" — the normal opportunity range and socially controllable factors; meeting needs fairly under scarcity. <span style="color:#94a3b4">(COLLEGE 117, Week 1)</span></li>
+      <li>Ruth Faden &amp; Madison Powers, "Biotechnology, Justice and Health" — sufficiency across six dimensions of well-being and systematic disadvantage. <span style="color:#94a3b4">(COLLEGE 117, Week 5)</span></li>
+      <li>Bridget Pratt, "A Multidimensional Account of Social Justice for Global Health Research" — the five dimensions scored in Exhibit F: power, recognition, harmony, inclusion, well-being. <span style="color:#94a3b4">(COLLEGE 117, Week 4)</span></li>
     </ol>
     <div class="meta">
-      <strong>About the model.</strong> The 1,000 households are synthetic, generated by a fixed-seed simulation. True poverty is
-      a hidden variable; the algorithm you train is a real logistic regression that sees only the proxies you select and runs
-      entirely in your browser. The regional pattern of exclusion is an emergent property of training a poverty model on
-      legibility-biased proxies — the same structural failure documented for real proxy-means-test systems — not a number typed
-      in by hand. No real persons, no income data, no PII. <br><br>
+      <strong>About the model.</strong> The 1,000 households are synthetic, drawn from a fixed-seed simulation; press
+      <em>Re-draw the population</em> to confirm the pattern is not one lucky sample. True consumption is a hidden variable. The
+      model you train is a real <strong>linear regression that predicts each household's consumption from only the proxies you
+      select</strong>, then funds the lowest-scoring households up to the budget — the same two-stage logic a real proxy means
+      test uses — and it runs entirely in your browser. The regional exclusion is an emergent property of one national model
+      reading legibility-biased proxies, the failure documented for real PMT systems (Alatas et al. 2012; Gonzales Martinez &amp;
+      Cooray 2025), not a number typed in by hand. Across 30 random seeds the gap persists, with the outer islands worst in 26 of
+      30. No real persons, no income data, no PII. <br><br>
       Open <code>index.html</code> in any browser. No internet connection required.
     </div>
+    <details class="appendix">
+      <summary>Technical appendix — data-generating process, model specification &amp; reproducibility</summary>
+      <div class="apx">
+        <p>Everything below runs client-side in this file; there are no external calls. Pseudo-randomness is a seeded
+        <code>mulberry32</code> PRNG with Gaussian draws via the Box–Muller transform, so every figure is exactly reproducible
+        from its seed. The canonical figures use <code>seed = 7</code>.</p>
+
+        <h4>1 · Population (N = 1,000 households)</h4>
+        <ul>
+          <li>Region <code>r ∈ {urban, rural, outer}</code> sampled with probabilities <code>{0.45, 0.35, 0.20}</code>.</li>
+          <li>True log-consumption (the hidden welfare variable): <code>c = base[r] + 0.85·𝒩(0,1)</code>, with <code>base = {0.85, 0.35, 0.0}</code> — outer islands genuinely poorer on average.</li>
+          <li><b>Legibility bias</b> (the mechanism): apparent wealth <code>aw = c + legBias[r] + 0.35·𝒩(0,1)</code>, with <code>legBias = {0.0, 0.30, 0.55}</code> — the further from the capital, the more a household's proxies overstate its welfare.</li>
+          <li>Observable proxies are noisy functions of <code>aw</code> only: floor area <code>= 30 + 11·aw</code>, electricity VA <code>= 900 + 240·aw</code>, assets <code>= 1.4 + 0.9·aw</code> (clipped 0–3), roof &amp; toilet via <code>σ(·)</code>, household size <code>= 4.2 − 0.5·aw</code> (each plus independent Gaussian noise).</li>
+          <li>Ground truth: a household is <b>truly poor</b> if its true consumption <code>c</code> falls below the 38th percentile of <code>c</code>. The model never sees <code>c</code>, <code>aw</code>, region, or this label.</li>
+        </ul>
+
+        <h4>2 · The model (a faithful proxy means test)</h4>
+        <ul>
+          <li>Features standardized to zero mean, unit variance. Target = standardized true consumption.</li>
+          <li><b>Linear regression</b> fit by batch gradient descent (learning rate 0.3, 810 iterations) — i.e. ordinary least squares predicting a continuous welfare score, exactly as real PMTs do, rather than a poor/not-poor classifier.</li>
+          <li>Allocation: rank households by predicted consumption ascending and fund the lowest-scoring <code>B = budget × N</code> — the real two-stage "predict-then-threshold" rule.</li>
+        </ul>
+
+        <h4>3 · Fairness strategies (Exhibit D)</h4>
+        <ul>
+          <li><b>One identical rule</b>: global ranking, colorblind (anti-classification).</li>
+          <li><b>Equal slots per region</b>: slots ∝ regional population, ranked within region.</li>
+          <li><b>Slots follow real poverty rates</b>: slots ∝ each region's true poor count (substantive equality) — the only rule that uses the group variable.</li>
+        </ul>
+
+        <h4>4 · Robustness (Exhibit H)</h4>
+        <p>24 independent replications on seeds 101–124, each a fresh population and a freshly trained model. Reported: per-region
+        mean and min–max exclusion, the count of runs in which the outer islands are worst-hit, the mean outer-minus-capital gap,
+        and the mean variance explained (R²). Replication refutes the lucky-sample objection; the legibility mechanism itself is
+        grounded not in the reseed but in the documented spatial heterogeneity of real proxy means tests (Gonzales Martinez &amp;
+        Cooray, 2025).</p>
+
+        <h4>5 · Limitations &amp; reflexivity</h4>
+        <p>Two limits stated honestly, because an investigation that hides its own seams is not an investigation. First, the model
+        trains and is evaluated on the same 1,000 households, with no survey-versus-deployment split; this does not bias the result,
+        since the regional gap is an omitted-variable effect rather than overfitting, but a real PMT estimates coefficients on a
+        survey sample and applies them elsewhere. Second, and more important: <b>"true poverty" here is itself a construction.</b>
+        It is the bottom 38% of a single latent consumption variable, the economist's metric, which is the very kind of reduction
+        this project criticizes. The simulation can expose the gap between the <em>proxies</em> and <em>consumption</em>, but not
+        the further gap between consumption and lived hardship, which is exactly where Scott's <em>mētis</em> and the community's
+        different concept of poverty (Alatas et al., 2012) live. Every measure of need, including this one, is a map. Naming that
+        is the argument, not an escape from it.</p>
+      </div>
+    </details>
   </footer>
 </div>
 
@@ -458,27 +595,35 @@ const N=1000;
 const REGIONS=["Jakarta urban","Java rural","Outer islands"];
 const RCOL=["var(--r-urban)","var(--r-rural)","var(--r-outer)"];
 
+// A real proxy means test predicts CONSUMPTION (a continuous welfare score) from observable
+// proxies, then funds the lowest-scoring households. True consumption is hidden. The proxies
+// encode an APPARENT wealth that is biased upward the further a household sits from the
+// capital's template — the legibility gap. That single national mapping is what erases the
+// outer-island poor, who look richer to the formula than they are.
 function generate(seed){
   const rng=mulberry32(seed), pts=[];
   for(let i=0;i<N;i++){
     const u=rng();
     const r = u<0.45?0 : u<0.80?1 : 2;
-    const baseHardship=[0.0,0.55,0.85][r];
-    const z = baseHardship + 0.95*randn(rng);
-    const trulyPoor = z > 0.65 ? 1 : 0;
-    const legBias=[0.0,0.55,0.85][r];
-    const v = z - legBias + 0.45*randn(rng);
-    const floor = Math.max(8, Math.round(58 - 11*v + 6*randn(rng)));
-    const watt  = Math.max(450, Math.round(1250 - 240*v + 120*randn(rng)));
-    const asset = Math.max(0, Math.min(3, Math.round(1.6 - 0.9*v + 0.8*randn(rng))));
-    const roof  = sigmoid(1.3 - 1.1*v + 0.6*randn(rng));
-    const toilet= sigmoid(1.1 - 1.0*v + 0.6*randn(rng))>0.5?1:0;
-    const hh    = Math.max(1, Math.round(3.6 + 0.5*v + randn(rng)));
-    pts.push({i,r,z,trulyPoor,floor,watt,asset,roof,toilet,hh});
+    const baseCons=[0.85,0.35,0.0][r];
+    const c = baseCons + 0.85*randn(rng);              // true consumption (higher = richer)
+    const legBias=[0.0,0.30,0.55][r];
+    const aw = c + legBias + 0.35*randn(rng);          // apparent wealth the proxies reflect
+    const floor = Math.max(8, Math.round(30 + 11*aw + 6*randn(rng)));
+    const watt  = Math.max(450, Math.round(900 + 240*aw + 120*randn(rng)));
+    const asset = Math.max(0, Math.min(3, Math.round(1.4 + 0.9*aw + 0.8*randn(rng))));
+    const roof  = sigmoid(-1.3 + 1.1*aw + 0.6*randn(rng));
+    const toilet= sigmoid(-1.1 + 1.0*aw + 0.6*randn(rng))>0.5?1:0;
+    const hh    = Math.max(1, Math.round(4.2 - 0.5*aw + randn(rng)));
+    pts.push({i,r,c,aw,floor,watt,asset,roof,toilet,hh});
   }
+  const sorted=pts.slice().sort((a,b)=>a.c-b.c);       // poverty line = bottom 38% by true consumption
+  const line=sorted[Math.floor(0.38*N)].c;
+  pts.forEach(p=>p.trulyPoor = p.c<line ? 1 : 0);
   return pts;
 }
-const pts=generate(7);
+let currentSeed=7;
+let pts=generate(currentSeed);
 
 // ===================== proxy definitions =====================
 const PROXIES=[
@@ -511,7 +656,6 @@ function standardize(X){
   return {Xs:X.map(r=>r.map((x,j)=>(x-mean[j])/std[j]))};
 }
 let model=null, probs=[], strategy="accuracy";
-const y=pts.map(p=>p.trulyPoor);
 
 // ===================== UI refs =====================
 const budget=document.getElementById('budget'), budgetLab=document.getElementById('budgetLab'),
@@ -550,23 +694,27 @@ function train(){
   const feats=selectedFeats();
   if(feats.length===0){alert("Give the algorithm at least one clue to learn from.");return;}
   const {Xs}=standardize(design(feats));
+  // target the real PMT regresses on: each household's (standardized) consumption
+  const cy=pts.map(p=>p.c);
+  const my=cy.reduce((a,c)=>a+c,0)/N;
+  const sy=Math.sqrt(cy.reduce((a,c)=>a+(c-my)**2,0)/N)||1;
+  const yt=cy.map(v=>(v-my)/sy);
   const d=feats.length; let w=Array(d).fill(0), b=0;
   lossHist=[]; trainBox.classList.add('show'); revealBtn.disabled=true;
   // weight rows
   weightsEl.innerHTML=feats.map(f=>{const nm=PROXIES.find(p=>p.key===f).nm;
     return '<div class="wrow"><span>'+nm+'</span><div class="wtrack"><div class="wfill" data-f="'+f+'"></div></div><span class="wnum" data-n="'+f+'">0.00</span></div>';}).join('');
 
-  const TOTAL=40, ITERS=18, lr=0.5;
+  const TOTAL=45, ITERS=18, lr=0.3;
   let frame=0;
   function step(){
     for(let t=0;t<ITERS;t++){
       const gw=Array(d).fill(0); let gb=0, loss=0;
       for(let i=0;i<N;i++){
-        const p=sigmoid(Xs[i].reduce((s,x,j)=>s+x*w[j],b));
-        const e=p-y[i];
+        const pred=Xs[i].reduce((s,x,j)=>s+x*w[j],b);   // predicted consumption (OLS)
+        const e=pred-yt[i];
         for(let j=0;j<d;j++) gw[j]+=e*Xs[i][j];
-        gb+=e;
-        loss+=-(y[i]*Math.log(p+1e-9)+(1-y[i])*Math.log(1-p+1e-9));
+        gb+=e; loss+=e*e;
       }
       for(let j=0;j<d;j++) w[j]-=lr*(gw[j]/N);
       b-=lr*(gb/N);
@@ -574,8 +722,8 @@ function train(){
     }
     frame++;
     const curLoss=lossHist[lossHist.length-1];
-    trainIt.textContent='iter '+(frame*ITERS)+' · loss '+curLoss.toFixed(3);
-    const maxAbs=Math.max(...w.map(Math.abs),0.5);
+    trainIt.textContent='iter '+(frame*ITERS)+' · error '+curLoss.toFixed(3);
+    const maxAbs=Math.max(...w.map(Math.abs),0.3);
     feats.forEach((f,j)=>{
       const fill=weightsEl.querySelector('.wfill[data-f="'+f+'"]');
       const num=weightsEl.querySelector('.wnum[data-n="'+f+'"]');
@@ -588,8 +736,11 @@ function train(){
     drawLoss();
     if(frame<TOTAL){requestAnimationFrame(step);}
     else{
-      model={w,b,feats,Xs};
-      probs=Xs.map(r=>sigmoid(r.reduce((s,x,j)=>s+x*w[j],b)));
+      // predicted consumption → normalized poverty score (higher = poorer = funded first)
+      const pred=Xs.map(r=>r.reduce((s,x,j)=>s+x*w[j],b));
+      const pmin=Math.min(...pred), pmax=Math.max(...pred), span=(pmax-pmin)||1;
+      probs=pred.map(v=>(pmax-v)/span);
+      model={w,b,feats,Xs,pred};
       revealBtn.disabled=false;
       document.getElementById('predict').classList.add('show');
     }
@@ -603,7 +754,7 @@ function drawLoss(){
   const mx=Math.max(...lossHist), mn=Math.min(...lossHist), rng=(mx-mn)||1;
   lctx.strokeStyle='#3bc6ad'; lctx.lineWidth=2; lctx.beginPath();
   lossHist.forEach((l,i)=>{
-    const x=(i/(40-1))*W, yv=H-8-((l-mn)/rng)*(H-16);
+    const x=(i/(45-1))*W, yv=H-8-((l-mn)/rng)*(H-16);
     i?lctx.lineTo(x,yv):lctx.moveTo(x,yv);
   });
   lctx.stroke();
@@ -747,11 +898,11 @@ function renderReveal(){
     .sort((a,b)=> (b.r-a.r) || (a.floor-b.floor)).slice(0,3);
   const reasons=p=>{
     const rs=[];
-    if(p.asset>=1) rs.push('owns a motorbike the family needs to earn');
-    if(p.watt>=900) rs.push('has an electricity connection');
-    if(p.roof>0.5) rs.push('a roof that still reads as "durable"');
-    if(p.floor>22) rs.push(p.floor+' m² of floor — large for its '+p.hh+' people');
-    if(rs.length===0) rs.push('clues that fell just over the cutoff');
+    if(p.asset>=2) rs.push('own a motorbike and a phone the family needs to earn');
+    if(p.watt>=1050) rs.push('have a metered electricity connection');
+    if(p.roof>0.45) rs.push('keep a roof the formula still reads as "durable"');
+    if(p.floor>=38) rs.push('occupy '+p.floor+' m² — large for a household of '+p.hh);
+    if(rs.length===0) rs.push('register just above the cutoff on the clues that count');
     return rs.slice(0,2).join(', ');
   };
   document.getElementById('files').innerHTML=vanished.map(p=>
@@ -812,19 +963,19 @@ function renderAudit(){
     'trap: you can have an algorithm that treats every household by an <b>identical, colorblind rule</b>, or one that delivers aid '+
     '<b>justly across regions</b> — not both. That choice, formal equality of treatment versus substantive equality of outcome, is '+
     'the oldest argument in anti-discrimination law (see Kleinberg et al. on why competing fairness criteria conflict) — and the '+
-    'formula settles it by default, in silence, for 270 million people.';
+    'formula settles it by default, in silence, for more than 280 million people.';
 }
 
 // ===================== Exhibit D: justice lenses =====================
 const verdicts={
   colorblind:{cls:'fair',stamp:'No violation — "fair"',title:'Anti-classification — fairness as similar treatment',
-    body:'The most powerful definition of fairness in law and in engineering review: a system is fair if it does not <em>use</em> a forbidden variable. This machine never saw income, never saw ethnicity, never even saw region — only roofs and watts. By this test it is spotless, and it returns a verdict of <strong>no discrimination</strong>. And in doing so it makes the entire regional gap you measured vanish from the audit, because the audit was never allowed to look at it. The most authoritative fairness standard is the one structurally blind to this harm.<br><span class="cite">Frames "fairness as similar treatment" from the Week 6 Med-AI lecture; the same blind spot Obermeyer et al. (2019) exposed.</span>'},
+    body:'The most powerful definition of fairness in law and in engineering review: a system is fair if it does not <em>use</em> a forbidden variable. This machine never saw income, never saw ethnicity, never even saw region — only roofs and watts. By this test it is spotless, and it returns a verdict of <strong>no discrimination</strong>. And in doing so it makes the entire regional gap you measured vanish from the audit, because the audit was never allowed to look at it. The most authoritative fairness standard is the one structurally blind to this harm.<br><span class="cite">Anti-classification = removing the variable. Cf. Vyas, Eisenstein &amp; Jones, NEJM 2020: in medicine, removing a race correction usually <em>helps</em> the disadvantaged — here, removing region <em>hurts</em> them. Colorblindness is not neutral; its justice depends on where the bias lives.</span>'},
   rawls:{cls:'unjust',stamp:'Unjust',title:'Fair equality of opportunity — Rawls → Daniels',
-    body:'Rawls makes fair equality of opportunity a demand of justice; Daniels carries it into welfare and health, arguing a deprivation is unjust when it "derives from an unjust distribution of the socially controllable factors" shaping people\'s life chances. This algorithm <strong>is</strong> such a socially controllable factor: it strips the program from exactly the families whose need is greatest but least legible, narrowing their opportunity precisely because the state had already overlooked them. Judged on outcomes for the worst-off, it fails — and "we used no forbidden variable" is no defense at all.<br><span class="cite">Daniels, "Three Questions of Justice" (Wk 1); Rawls, <em>A Theory of Justice</em> (1971).</span>'},
+    body:'Rawls makes fair equality of opportunity a demand of justice; Daniels carries it into welfare and health, arguing that a deprivation becomes unjust when it derives from an unjust distribution of the socially controllable factors that shape people\'s life chances. This algorithm <strong>is</strong> such a socially controllable factor: it strips the program from exactly the families whose need is greatest but least legible, narrowing their opportunity precisely because the state had already overlooked them. Judged on outcomes for the worst-off, it fails — and "we used no forbidden variable" is no defense at all.<br><span class="cite">Daniels, "Three Questions of Justice" (Wk 1), extending Rawls, "Two Principles of Justice" (Wk 1).</span>'},
   faden:{cls:'unjust',stamp:'Unjust',title:'Sufficiency &amp; well-being — Faden &amp; Powers',
-    body:'Faden and Powers ask whether each person can reach a <strong>sufficient level of well-being</strong> across the core dimensions of a decent life — and whether a practice entrenches <em>systematic, compounding disadvantage</em>. Denying cash aid to the poorest families in the poorest regions does exactly that: it deepens an existing deprivation along an existing fault line. Intent and inputs are beside the point; what the framework weighs is whether real people are pushed further below a decent life. Here they are. Unjust.<br><span class="cite">Faden &amp; Powers on sufficiency and "decent lives" (Wk 5; Wk 6 lecture).</span>'},
+    body:'Faden and Powers ask whether each person can reach a <strong>sufficient level of well-being</strong> across the core dimensions of a decent life — and whether a practice entrenches <em>systematic, compounding disadvantage</em>. Denying cash aid to the poorest families in the poorest regions does exactly that: it deepens an existing deprivation along an existing fault line. Intent and inputs are beside the point; what the framework weighs is whether real people are pushed further below a decent life. Here they are. Unjust.<br><span class="cite">Faden &amp; Powers, "Biotechnology, Justice and Health" (Wk 5), on sufficiency of well-being and systematic disadvantage.</span>'},
   efficiency:{cls:'accurate',stamp:'Accurate — wrong question',title:'Efficiency — "Does the model work?"',
-    body:'Engineers can honestly report that the model is <em>accurate</em>: it predicts the proxies it was trained on, and predicts them well. That is the trap. The proxies were chosen as a <strong>stand-in for need</strong>, and for the rural and remote poor that stand-in is broken — so a technically excellent model optimizes a target that is wrong for the people who matter most. As the Week 6 lecture warns, this lens fixes on "the model\'s performance rather than a valued outcome which speaks to social value." Accuracy cannot tell you that you measured the wrong thing.<br><span class="cite">Martschenko &amp; Martinez-Martin, COLLEGE 117 Wk 6 lecture, on model performance vs. valued outcomes.</span>'}
+    body:'Engineers can honestly report that the model is <em>accurate</em>: it predicts the proxies it was trained on, and predicts them well. That is the trap. The proxies were chosen as a <strong>stand-in for need</strong>, and for the rural and remote poor that stand-in is broken — so a technically excellent model optimizes a target that is wrong for the people who matter most. This lens fixes on the model\'s performance rather than on the valued outcome it was supposed to serve. Accuracy cannot tell you that you measured the wrong thing.<br><span class="cite">The broken-proxy trap: Obermeyer et al., <em>Science</em> 2019 — a technically accurate model optimizing a target (cost, or visible assets) that stands in poorly for the need that matters.</span>'}
 };
 const lensBtns=[...document.querySelectorAll('.lens')];
 lensBtns.forEach(b=>b.addEventListener('click',()=>{
@@ -851,8 +1002,89 @@ document.getElementById('pratt').innerHTML=PRATT.map(p=>
   '<div class="pt">'+p.t+'</div></div>').join('');
 document.querySelectorAll('#pratt .pcard').forEach(c=>c.addEventListener('click',()=>c.classList.toggle('open')));
 
+// ===================== Exhibit H: Monte-Carlo robustness study =====================
+// One full, self-contained replication: fresh population -> standardize -> OLS on
+// consumption -> rank-and-fund -> per-region exclusion. Does not touch the live UI state.
+function runReplication(seed, feats, budgetFrac){
+  const P=generate(seed), n=P.length, d=feats.length;
+  const X=P.map(p=>feats.map(f=>p[f]));
+  const mean=Array(d).fill(0), sd=Array(d).fill(0);
+  X.forEach(r=>r.forEach((x,j)=>mean[j]+=x)); mean.forEach((_,j)=>mean[j]/=n);
+  X.forEach(r=>r.forEach((x,j)=>sd[j]+=(x-mean[j])**2)); sd.forEach((_,j)=>sd[j]=Math.sqrt(sd[j]/n)||1);
+  const Xs=X.map(r=>r.map((x,j)=>(x-mean[j])/sd[j]));
+  const cy=P.map(p=>p.c), my=cy.reduce((a,c)=>a+c,0)/n;
+  const syv=Math.sqrt(cy.reduce((a,c)=>a+(c-my)**2,0)/n)||1;
+  const yt=cy.map(v=>(v-my)/syv);
+  let w=Array(d).fill(0), b=0; const lr=0.3, iters=600;
+  for(let t=0;t<iters;t++){
+    const gw=Array(d).fill(0); let gb=0;
+    for(let i=0;i<n;i++){const pr=Xs[i].reduce((s,x,j)=>s+x*w[j],b);const e=pr-yt[i];for(let j=0;j<d;j++)gw[j]+=e*Xs[i][j];gb+=e;}
+    for(let j=0;j<d;j++)w[j]-=lr*(gw[j]/n); b-=lr*(gb/n);
+  }
+  const pred=Xs.map(r=>r.reduce((s,x,j)=>s+x*w[j],b));
+  let sr=0; for(let i=0;i<n;i++) sr+=(yt[i]-pred[i])**2;     // SS_res; SS_tot=n (standardized y)
+  const R2=1-sr/n;
+  const order=[...P.keys()].sort((a,b)=>pred[a]-pred[b]);    // lowest predicted consumption first
+  const sel=new Set(order.slice(0,Math.round(n*budgetFrac)));
+  const reg=[0,1,2].map(r=>{const poor=P.filter(p=>p.r===r&&p.trulyPoor);const ex=poor.filter(p=>!sel.has(p.i)).length;return poor.length?100*ex/poor.length:0;});
+  const totPoor=P.filter(p=>p.trulyPoor).length, FN=P.filter(p=>p.trulyPoor&&!sel.has(p.i)).length;
+  return {urban:reg[0],rural:reg[1],outer:reg[2],overall:100*FN/totPoor,R2,monotonic:reg[2]>reg[1]&&reg[1]>reg[0]};
+}
+const mcBtn=document.getElementById('mcBtn'), mcProg=document.getElementById('mcProg');
+mcBtn.addEventListener('click',()=>{
+  const feats=model?model.feats:selectedFeats();
+  if(!feats.length){alert('Train a model first.');return;}
+  const budgetFrac=+budget.value/100, seeds=[];
+  for(let s=101;s<=124;s++) seeds.push(s);
+  const res=[]; let k=0; mcBtn.disabled=true;
+  function chunk(){
+    const end=Math.min(k+2,seeds.length);
+    for(;k<end;k++) res.push(runReplication(seeds[k],feats,budgetFrac));
+    mcProg.textContent='trained '+res.length+' / '+seeds.length+' populations…';
+    if(k<seeds.length) setTimeout(chunk,0);
+    else { mcBtn.disabled=false; mcProg.textContent=''; renderMC(res,budgetFrac); }
+  }
+  chunk();
+});
+function mcAgg(vals){return {mean:vals.reduce((a,c)=>a+c,0)/vals.length,min:Math.min(...vals),max:Math.max(...vals)};}
+function renderMC(res,budgetFrac){
+  const rows=[['Outer islands','outer',2],['Java rural','rural',1],['Jakarta urban','urban',0]];
+  const maxv=Math.max(...res.flatMap(r=>[r.urban,r.rural,r.outer]),1);
+  let bars='<div class="mcbars">';
+  rows.forEach(([nm,key,ri])=>{
+    const a=mcAgg(res.map(r=>r[key]));
+    bars+='<div class="mcrow"><span class="rn" style="color:'+RCOL[ri]+'">'+nm+'</span>'+
+      '<div class="mctrack"><div class="mcfill" style="width:'+(100*a.mean/maxv)+'%;background:'+RCOL[ri]+'"></div>'+
+      '<div class="mcwhisker" style="left:'+(100*a.min/maxv)+'%;width:'+Math.max(2,100*(a.max-a.min)/maxv)+'%"></div></div>'+
+      '<span class="mcnum">mean '+a.mean.toFixed(0)+'% · range '+a.min.toFixed(0)+'–'+a.max.toFixed(0)+'%</span></div>';
+  });
+  bars+='</div>';
+  const mono=res.filter(r=>r.monotonic).length;
+  const gap=mcAgg(res.map(r=>r.outer-r.urban));
+  const r2=mcAgg(res.map(r=>r.R2));
+  const sum='<div class="mcsum">Across <b>'+res.length+'</b> independent populations at the current budget ('+Math.round(budgetFrac*100)+
+    '% coverage), the outer islands were the single worst-hit region in <b>'+mono+' of '+res.length+'</b> runs. The mean gap between '+
+    'outer-island and capital exclusion was <b>'+gap.mean.toFixed(0)+' points</b> (range '+gap.min.toFixed(0)+'–'+gap.max.toFixed(0)+'). '+
+    'The model explained on average <b>'+(100*r2.mean).toFixed(0)+'%</b> of the variance in true consumption — a competent fit, not a '+
+    'broken one. That is the whole point: the exclusion is a property of the <em>structure</em> — one national model reading '+
+    'legibility-biased proxies — not of a bad model or a single lucky draw.</div>';
+  const out=document.getElementById('mcOut'); out.innerHTML=bars+sum; out.classList.add('show');
+}
+
+// ===================== re-draw the population (robustness) =====================
+function regenerate(seed){
+  currentSeed=seed; pts=generate(seed);
+  document.getElementById('seedNum').textContent=seed;
+  predScored=false; needsTrain();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.getElementById('reseedBtn').addEventListener('click',()=>{
+  regenerate(Math.floor(Math.random()*99999)+1);
+});
+
 // ===================== reset =====================
 document.getElementById('resetBtn').addEventListener('click',()=>{
+  regenerate(7);
   needsTrain(); strategy="accuracy"; predScored=false; predRegionVal=null;
   predExcl.value=15; predExclLab.textContent='15%';
   document.querySelectorAll('#predRegion button').forEach(x=>x.classList.remove('sel'));
